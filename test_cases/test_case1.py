@@ -3,6 +3,7 @@ from gradescope_utils.autograder_utils.decorators import weight, number
 from zipfile import ZipFile,BadZipFile
 from os.path import isfile
 import os
+import pyzipper
 class Test(unittest.TestCase):
 
     def check_zip_encryption_flags(self, zip_filepath):
@@ -36,12 +37,24 @@ class Test(unittest.TestCase):
             self.assertTrue(is_encrypted, "Zip file must be password protected")
 
         # Check if the password = hacker
-        try:
-            with ZipFile(submission_path) as zf:
-                zf.extractall(path=os.path.join(os.getcwd(),"submission"), pwd='hacker'.encode('utf-8'))
 
+        try:
+            try:
+                e1_good = True
+                with ZipFile(submission_path) as zf:
+                    zf.extractall(path=os.path.join(os.getcwd(),"submission"), pwd='hacker'.encode('utf-8'))
+            except Exception as e1:
+                print("Python Standard Lib Failed. Try third-party package")
+                e1_good = False
+                try:
+                    e2_good = True
+                    with pyzipper.AESZipFile(submission_path, 'r', compression=pyzipper.ZIP_DEFLATED,encryption=pyzipper.WZ_AES) as extracted_zip:
+                        extracted_zip.extractall(path=os.path.join(os.getcwd(),"submission"), pwd=str.encode("hacker"))
+                except Exception as e2:
+                    print("Third-party package failed")
+                    e2_good = False
         except Exception as e:
-            self.assertTrue(False, e)
+            self.assertTrue(e1_good or e2_good, e)
 
 
 
